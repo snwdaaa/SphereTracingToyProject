@@ -10,6 +10,35 @@ float SphereSDF(vec3 p, float r) {
 	return length(p) - r;
 }
 
+// SDF 정의된 씬의 Surface Normal 구하기
+vec3 EstimateNormal(vec3 p) {
+	float EPSILON = 0.001;
+
+	return normalize(vec3(
+		SphereSDF(vec3(p.x + EPSILON, p.y, p.z), 1.0) - SphereSDF(vec3(p.x - EPSILON, p.y, p.z), 1.0),
+		SphereSDF(vec3(p.x, p.y + EPSILON, p.z), 1.0) - SphereSDF(vec3(p.x, p.y - EPSILON, p.z), 1.0),
+		SphereSDF(vec3(p.x, p.y, p.z + EPSILON), 1.0) - SphereSDF(vec3(p.x, p.y, p.z - EPSILON), 1.0)
+	));
+}
+
+vec3 CalcPhongModel(vec3 rayPos, vec3 rayOrigin, vec3 normal, vec3 lightPos, vec3 lightColor, vec3 objectColor) {
+	// Ambient
+	float ambientStrength = 0.1;
+	float ambient = ambientStrength;
+
+	// Diffuse
+	vec3 toLightDir = normalize(lightPos - rayPos); // 충돌 지점에서 광원으로 향함
+	float diffuse = max(dot(normal, toLightDir), 0);
+
+	// Specular
+	float specularStrength = 0.5;
+	vec3 viewDir = normalize(rayOrigin - rayPos);
+	vec3 reflectedDir = reflect(-toLightDir, normal);
+	float specular = pow(max(dot(viewDir, reflectedDir), 0.0), 32.0) * specularStrength;
+
+	return (ambient + diffuse + specular) * lightColor * objectColor;
+}
+
 // 쉐이더 코드는 각 픽셀마다 독립적으로 실행됨
 void main() {
 	float EPSILON = 0.001;
@@ -23,18 +52,28 @@ void main() {
 	// 카메라 설정
 	vec3 rayOrigin = vec3(0.0, 0.0, -3.0);
 	vec3 rayDir = normalize(vec3(uv, 1.0)); // 각 픽셀로 감
-
 	vec3 rayPos = rayOrigin; // 현재 광선 위치
+
+	// 광원 설정
+	vec3 lightPos = vec3(3.0, 3.0, -3.0);	
+	vec3 lightColor = vec3(1.0, 1.0, 1.0);
+
+	// 물체 설정
+	vec3 objectColor = vec3(0.58, 0.18, 0.85); // Violet
 
 	// Ray Marching 알고리즘 구현
 	float MAX_MARCHING_STEPS = 100;
 	float MAX_MARCHING_DEPTH = 100;
 	for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
-		float dist = SphereSDF(rayPos, 1.0);
+		float dist = SphereSDF(rayPos, 1.5);
 
 		// 표면에 충분히 가까워졌다면 충돌로 판단
 		if (dist < EPSILON) {
-			FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 빨간색
+			// Phong Reflection Model 적용
+			vec3 normal = EstimateNormal(rayPos);
+			vec3 phongResult = CalcPhongModel(rayPos, rayOrigin, normal, lightPos, lightColor, objectColor);
+
+			FragColor = vec4(phongResult, 1.0);
 			return;
 		}
 
