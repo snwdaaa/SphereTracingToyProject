@@ -5,6 +5,11 @@ out vec4 FragColor; // 현재 픽셀의 최종 결과
 // 현재 렌더링 영역의 해상도
 uniform vec2 u_resolution;
 
+// 카메라 위치
+uniform vec3 u_camPos;
+// 카메라 목표
+uniform vec3 u_camTarget;
+
 // 중심이 원점이고, 반지름이 r인 원에 대한 SDF
 float SphereSDF(vec3 p, float r) {
 	return length(p) - r;
@@ -23,7 +28,7 @@ vec3 EstimateNormal(vec3 p) {
 
 vec3 CalcPhongModel(vec3 rayPos, vec3 rayOrigin, vec3 normal, vec3 lightPos, vec3 lightColor, vec3 objectColor) {
 	// Ambient
-	float ambientStrength = 0.1;
+	float ambientStrength = 0.06;
 	float ambient = ambientStrength;
 
 	// Diffuse
@@ -31,12 +36,20 @@ vec3 CalcPhongModel(vec3 rayPos, vec3 rayOrigin, vec3 normal, vec3 lightPos, vec
 	float diffuse = max(dot(normal, toLightDir), 0);
 
 	// Specular
-	float specularStrength = 0.5;
+	float specularStrength = 1;
 	vec3 viewDir = normalize(rayOrigin - rayPos);
 	vec3 reflectedDir = reflect(-toLightDir, normal);
 	float specular = pow(max(dot(viewDir, reflectedDir), 0.0), 32.0) * specularStrength;
 
 	return (ambient + diffuse + specular) * lightColor * objectColor;
+}
+
+// 뷰 변환 행렬 -> 이동, 회전 처리
+mat3 ViewMatrix(vec3 pos, vec3 target, vec3 up) {
+	vec3 zAxis = normalize(target - pos); // 카메라가 바라보는 방향 (Forward)
+	vec3 xAxis = normalize(cross(zAxis, up)); // 카메라의 오른쪽 방향 (Right)
+	vec3 yAxis = cross(xAxis, zAxis); // 카메라의 위쪽 방향 (Up)
+	return mat3(xAxis, yAxis, zAxis);
 }
 
 // 쉐이더 코드는 각 픽셀마다 독립적으로 실행됨
@@ -50,12 +63,13 @@ void main() {
 	vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
 
 	// 카메라 설정
-	vec3 rayOrigin = vec3(0.0, 0.0, -3.0);
-	vec3 rayDir = normalize(vec3(uv, 1.0)); // 각 픽셀로 감
+	vec3 rayOrigin = u_camPos;
+	mat3 viewMatrix = ViewMatrix(rayOrigin, u_camTarget, vec3(0, 1, 0));
+	vec3 rayDir = viewMatrix * normalize(vec3(uv, 1.0)); // 각 픽셀로 감 & 광선에 뷰 행렬 적용해 방향 변경
 	vec3 rayPos = rayOrigin; // 현재 광선 위치
 
 	// 광원 설정
-	vec3 lightPos = vec3(3.0, 3.0, -3.0);	
+	vec3 lightPos = vec3(3.0, 3.0, 3.0);
 	vec3 lightColor = vec3(1.0, 1.0, 1.0);
 
 	// 물체 설정

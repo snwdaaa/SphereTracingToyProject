@@ -5,6 +5,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 // 셰이더 파일의 코드를 string으로 읽어오는 함수
 std::string readShaderFile(const char* filePath) {
@@ -128,6 +129,14 @@ int main()
         // 매 프레임마다 창 크기 가져와서 u_resolution이라는 이름으로 셰이더에 전달
         int resolutionLocation = glGetUniformLocation(shaderProgram, "u_resolution");
         glUniform2f(resolutionLocation, (float)width, (float)height); // 해상도 값 업데이트
+
+        // 카메라 실시간 위치
+        glm::vec3 camPos = glm::vec3(0, 0, 3);
+        glm::vec3 camTarget = glm::vec3(0, 0, 0); // 원점
+        int camPosLocation = glGetUniformLocation(shaderProgram, "u_camPos");
+        int camTargetLocation = glGetUniformLocation(shaderProgram, "u_camTarget");
+        glUniform3f(camPosLocation, camPos.x, camPos.y, camPos.z);
+        glUniform3f(camTargetLocation, camTarget.x, camTarget.y, camTarget.z);
 
         // 화면 전체를 덮는 사각형 그리기
         glBindVertexArray(VAO);
