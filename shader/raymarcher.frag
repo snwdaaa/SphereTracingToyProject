@@ -45,8 +45,8 @@ vec3 CalcPhongModel(vec3 rayPos, vec3 rayOrigin, vec3 normal, vec3 lightPos, vec
 }
 
 // 뷰 변환 행렬 -> 이동, 회전 처리
-mat3 ViewMatrix(vec3 pos, vec3 target, vec3 up) {
-	vec3 zAxis = normalize(target - pos); // 카메라가 바라보는 방향 (Forward)
+mat3 ViewMatrix(vec3 pos, vec3 dir, vec3 up) {
+	vec3 zAxis = normalize(dir - pos); // 카메라가 바라보는 방향 (Forward)
 	vec3 xAxis = normalize(cross(zAxis, up)); // 카메라의 오른쪽 방향 (Right)
 	vec3 yAxis = cross(xAxis, zAxis); // 카메라의 위쪽 방향 (Up)
 	return mat3(xAxis, yAxis, zAxis);

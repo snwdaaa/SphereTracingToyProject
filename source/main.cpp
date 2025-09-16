@@ -65,6 +65,67 @@ void ProcessInput(GLFWwindow* window)
         glfwSetWindowShouldClose(window, true);
 }
 
+// ---------- 초기화 ------------
+
+unsigned int shaderProgram;
+
+int camPosLocation;
+int camDirLocation;
+
+glm::vec3 camPos;
+glm::vec3 camFront;
+glm::vec3 camUp = glm::vec3(0, 1, 0);
+float camSpeed = 0.1f;
+
+void InitCamera() {
+    // 카메라 실시간 위치
+    camPos = glm::vec3(0, 0, 3);
+    camFront = glm::vec3(0, 0, -1); // 원점
+    camPosLocation = glGetUniformLocation(shaderProgram, "u_camPos");
+    camDirLocation = glGetUniformLocation(shaderProgram, "u_camDir");
+    glUniform3f(camPosLocation, camPos.x, camPos.y, camPos.z);
+    glUniform3f(camDirLocation, camFront.x, camFront.y, camFront.z);
+}
+
+// ---------- 초기화 ------------
+
+// ---------- 카메라 ------------
+
+void UpdateCamera() {
+    glUniform3f(camPosLocation, camPos.x, camPos.y, camPos.z);
+    glUniform3f(camDirLocation, camFront.x, camFront.y, camFront.z);
+}
+
+// ---------- 카메라 ------------
+
+// ------------ 입력 ------------
+
+void MoveKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_W) {
+        camPos += camSpeed * camFront;
+    }
+    else if (key == GLFW_KEY_S) {
+        camPos -= camSpeed * camFront;
+    }
+    else if (key == GLFW_KEY_A) {
+        camPos -= glm::normalize(glm::cross(camFront, camUp)) * camSpeed;
+    }
+    else if (key == GLFW_KEY_D) {
+        camPos += glm::normalize(glm::cross(camFront, camUp)) * camSpeed;
+    }
+    else if (key == GLFW_KEY_Q) {
+        camPos += camSpeed * camUp;
+    }
+    else if (key == GLFW_KEY_E) {
+        camPos -= camSpeed * camUp;
+    }
+    else if (key == GLFW_KEY_SPACE) {
+        camPos = glm::vec3(0, 0, 3);
+    }
+}
+
+// ------------ 입력 ------------
+
 int main()
 {
     glfwInit();
@@ -107,12 +168,15 @@ int main()
     std::string fragmentShaderSource = readShaderFile("../shader/raymarcher.frag");
 
     // 셰이더 프로그램 생성
-    unsigned int shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+    shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
     // 빈 VAO 생성 (버퍼 없는 렌더링)
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
+
+    // 초기화
+    InitCamera();
 
     // This is the render loop
     while (!glfwWindowShouldClose(window))
@@ -130,17 +194,15 @@ int main()
         int resolutionLocation = glGetUniformLocation(shaderProgram, "u_resolution");
         glUniform2f(resolutionLocation, (float)width, (float)height); // 해상도 값 업데이트
 
-        // 카메라 실시간 위치
-        glm::vec3 camPos = glm::vec3(0, 0, 3);
-        glm::vec3 camTarget = glm::vec3(0, 0, 0); // 원점
-        int camPosLocation = glGetUniformLocation(shaderProgram, "u_camPos");
-        int camTargetLocation = glGetUniformLocation(shaderProgram, "u_camTarget");
-        glUniform3f(camPosLocation, camPos.x, camPos.y, camPos.z);
-        glUniform3f(camTargetLocation, camTarget.x, camTarget.y, camTarget.z);
+        // 업데이트
+        UpdateCamera();
 
         // 화면 전체를 덮는 사각형 그리기
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 6); // 배경 그리기 명령
+
+        // 키보드 이벤트 콜백 설정
+        glfwSetKeyCallback(window, MoveKeyCallback);
         
         glfwSwapBuffers(window); // 더블 버퍼링
         glfwPollEvents(); // 키보드, 마우스 이벤트 체크
