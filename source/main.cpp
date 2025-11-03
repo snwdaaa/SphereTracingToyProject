@@ -2,9 +2,63 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <functional>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+
+// 모델 로드를 위한 Assimp
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+// MVP(Model-View-Projection) 행렬 구현을 위한 라이브러리
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+// Assimp로 모델 로드하고 Vertex 목록 채우는 함수
+void LoadModel(const std::string& path, std::vector <glm::vec3>& vertices) {
+    Assimp::Importer importer;
+
+    // Importer 플래그
+    // aiProcsss_Triangulate: 모든 면을 삼각형으로 분할
+    // aiProcess_JoinIndenticalVertices: 중복되는 정점 합침
+    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices);
+
+    // 오류 발생시
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+        !scene->mRootNode) {
+        std::cerr << "ASSIMP ERROR: " << importer.GetErrorString() << std::endl;
+        return;
+    }
+
+    // 재귀적으로 노드 순회하면서 Mesh 데이터 추출
+    std::function<void(aiNode*, const aiScene*)> processNode = 
+        [&](aiNode* node, const aiScene* scene) {
+        // 현재 노드의 모든 Mesh 처리
+        for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+            aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+            for (unsigned int j = 0; j < mesh->mNumVertices; j++) {
+                glm::vec3 vertex;
+                vertex.x = mesh->mVertices[j].x;
+                vertex.y = mesh->mVertices[j].y;
+                vertex.z = mesh->mVertices[j].z;
+                vertices.push_back(vertex);
+            }
+        }
+
+        // 자식 노드들 재귀적으로 정리
+        for (unsigned int i = 0; i < node->mNumChildren; i++)
+            processNode(node->mChildren[i], scene);
+    };
+
+    processNode(scene->mRootNode, scene);
+    std::cout << "Successfully loaded model: " << path << " with "
+        << vertices.size() << " vertices." << std::endl;
+}
 
 // 셰이더 파일의 코드를 string으로 읽어오는 함수
 std::string readShaderFile(const char* filePath) {
@@ -89,6 +143,45 @@ int main()
         return -1;
     }
 
+    // 모델 로드
+    std::vector<glm::vec3> vertices;
+    LoadModel("../res/Sphere.obj", vertices);
+
+    // ----- VBO 생성 코드 -----
+    // Vertex의 위치, 색상, 텍스처 좌표 등 대량의 데이터를 담는 GPU 버퍼 생성
+
+    unsigned int VBO; // VBO 식별 ID
+    glGenBuffers(1, &VBO); // VBO 1개 생성 후 ID 받음
+
+    // GL_ARRAY_BUFFER 타입의 버퍼로 VBO 바인딩
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    // vertices 벡터의 데이터를 GPU로 복사
+    // GL_STATIC_DRAW -> 데이터가 거의 변하지 않을 때 사용
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_STATIC_DRAW);
+
+    // ----- VBO 생성 코드 -----
+
+    // ----- VAO 코드 -----
+    // VBO에 담긴 데이터를 GPU가 어떻게 해석해야 할지 지정
+    // 모던 OpenGL은 무언가 그리려면 반드시 하나 이상의 VAO(Vertex Array Object) 필요
+
+    unsigned int VAO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO); // VAO 바인딩
+
+    // Vertex Attribute Pointer 설정
+    // VBO 데이터의 구조를 직접적으로 지정하는 거라고 보면 됨
+    // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribPointer.xhtml
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0); // 0번 attribute로 Float 3개인 위치 정보를 GPU로 전송
+    glEnableVertexAttribArray(0); // 0번 location의 attribute 활성화
+
+    // 설정 끝났으므로 VAO와 VBO 바인딩 해제
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // ----- VAO 코드 -----
+
     // 초기 크기 지정
     glViewport(0, 0, 800, 600);
 
@@ -97,41 +190,51 @@ int main()
     {
         glViewport(0, 0, width, height);
     });
-
-    // 셰이더 로딩 및 VAO 생성
-    // 모던 OpenGL은 무언가 그리려면 반드시 하나 이상의 VAO(Vertex Array Object) 필요
-
-    // 셰이더 파일 읽기
+ 
+    // 셰이더 로딩
     std::string vertexShaderSource = readShaderFile("../shader/basic.vert");
     std::string fragmentShaderSource = readShaderFile("../shader/raymarcher.frag");
 
     // 셰이더 프로그램 생성
     unsigned int shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
-    // 빈 VAO 생성 (버퍼 없는 렌더링)
-    unsigned int VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    // This is the render loop
+    // 렌더 루프
     while (!glfwWindowShouldClose(window))
     {
         ProcessInput(window);
 
+        // 배경색 설정
+        glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
         // 사용할 셰이더 프로그램 지정
         glUseProgram(shaderProgram);
 
+        // ----- MVP(Model-View-Projection) 행렬 계산 및 전달 -----
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        // 유니폼 변수 전달
-        // 매 프레임마다 창 크기 가져와서 u_resolution이라는 이름으로 셰이더에 전달
-        int resolutionLocation = glGetUniformLocation(shaderProgram, "u_resolution");
-        glUniform2f(resolutionLocation, (float)width, (float)height); // 해상도 값 업데이트
+        // Model 행렬: 단위 행렬 사용
+        glm::mat4 model = glm::mat4(1.0f);
+        // View 행렬: 카메라 (0,0,3)에서 원점 바라봄
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // Projection 행렬: 45도 FOV로 원근 투영
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
+            (float)width / (float)height, 0.1f, 100.0f);
 
-        // 화면 전체를 덮는 사각형 그리기
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6); // 배경 그리기 명령
+        // 최종 MVP 행렬 계산
+        glm::mat4 mvp = projection * view * model;
+
+        // 셰이더의 u_mvp 유니폼 위치 찾아서 행렬 전달
+        int mvpLocation = glGetUniformLocation(shaderProgram, "u_mvp");
+        glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(mvp));
+        // ----- MVP(Model-View-Projection) 행렬 계산 및 전달 -----
+
+        // 화면에 모델 그리기
+        glBindVertexArray(VAO); // 설정이 저장된 VAO 바인딩
+        // VBO에 있는 정점들 사용해 삼각형 그리기
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
         
         glfwSwapBuffers(window); // 더블 버퍼링
         glfwPollEvents(); // 키보드, 마우스 이벤트 체크
