@@ -118,6 +118,67 @@ void ProcessInput(GLFWwindow* window)
         glfwSetWindowShouldClose(window, true);
 }
 
+// ---------- 초기화 ------------
+
+unsigned int shaderProgram;
+
+int camPosLocation;
+int camDirLocation;
+
+glm::vec3 camPos;
+glm::vec3 camFront;
+glm::vec3 camUp = glm::vec3(0, 1, 0);
+float camSpeed = 0.1f;
+
+void InitCamera() {
+    // 카메라 실시간 위치
+    camPos = glm::vec3(0, 0, 3);
+    camFront = glm::vec3(0, 0, -1); // 원점
+    camPosLocation = glGetUniformLocation(shaderProgram, "u_camPos");
+    camDirLocation = glGetUniformLocation(shaderProgram, "u_camDir");
+    glUniform3f(camPosLocation, camPos.x, camPos.y, camPos.z);
+    glUniform3f(camDirLocation, camFront.x, camFront.y, camFront.z);
+}
+
+// ---------- 초기화 ------------
+
+// ---------- 카메라 ------------
+
+void UpdateCamera() {
+    glUniform3f(camPosLocation, camPos.x, camPos.y, camPos.z);
+    glUniform3f(camDirLocation, camFront.x, camFront.y, camFront.z);
+}
+
+// ---------- 카메라 ------------
+
+// ------------ 입력 ------------
+
+void MoveKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_W) {
+        camPos += camSpeed * camFront;
+    }
+    else if (key == GLFW_KEY_S) {
+        camPos -= camSpeed * camFront;
+    }
+    else if (key == GLFW_KEY_A) {
+        camPos -= glm::normalize(glm::cross(camFront, camUp)) * camSpeed;
+    }
+    else if (key == GLFW_KEY_D) {
+        camPos += glm::normalize(glm::cross(camFront, camUp)) * camSpeed;
+    }
+    else if (key == GLFW_KEY_Q) {
+        camPos += camSpeed * camUp;
+    }
+    else if (key == GLFW_KEY_E) {
+        camPos -= camSpeed * camUp;
+    }
+    else if (key == GLFW_KEY_SPACE) {
+        camPos = glm::vec3(0, 0, 3);
+    }
+}
+
+// ------------ 입력 ------------
+
 int main()
 {
     glfwInit();
@@ -196,7 +257,7 @@ int main()
     std::string fragmentShaderSource = readShaderFile("../shader/raymarcher.frag");
 
     // 셰이더 프로그램 생성
-    unsigned int shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+    shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
     // 렌더 루프
     while (!glfwWindowShouldClose(window))
