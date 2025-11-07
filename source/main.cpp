@@ -9,56 +9,14 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-// 모델 로드를 위한 Assimp
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+// PMP 라이브러리
+#include <pmp/surface_mesh.h>
+#include <pmp/io/io.h>
 
 // MVP(Model-View-Projection) 행렬 구현을 위한 라이브러리
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-// Assimp로 모델 로드하고 Vertex 목록 채우는 함수
-void LoadModel(const std::string& path, std::vector <glm::vec3>& vertices) {
-    Assimp::Importer importer;
-
-    // Importer 플래그
-    // aiProcsss_Triangulate: 모든 면을 삼각형으로 분할
-    // aiProcess_JoinIndenticalVertices: 중복되는 정점 합침
-    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate |
-        aiProcess_JoinIdenticalVertices);
-
-    // 오류 발생시
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
-        !scene->mRootNode) {
-        std::cerr << "ASSIMP ERROR: " << importer.GetErrorString() << std::endl;
-        return;
-    }
-
-    // 재귀적으로 노드 순회하면서 Mesh 데이터 추출
-    std::function<void(aiNode*, const aiScene*)> processNode = 
-        [&](aiNode* node, const aiScene* scene) {
-        // 현재 노드의 모든 Mesh 처리
-        for (unsigned int i = 0; i < node->mNumMeshes; i++) {
-            aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            for (unsigned int j = 0; j < mesh->mNumVertices; j++) {
-                glm::vec3 vertex;
-                vertex.x = mesh->mVertices[j].x;
-                vertex.y = mesh->mVertices[j].y;
-                vertex.z = mesh->mVertices[j].z;
-                vertices.push_back(vertex);
-            }
-        }
-
-        // 자식 노드들 재귀적으로 정리
-        for (unsigned int i = 0; i < node->mNumChildren; i++)
-            processNode(node->mChildren[i], scene);
-    };
-
-    processNode(scene->mRootNode, scene);
-    std::cout << "Successfully loaded model: " << path << " with "
-        << vertices.size() << " vertices." << std::endl;
-}
 
 // 셰이더 파일의 코드를 string으로 읽어오는 함수
 std::string readShaderFile(const char* filePath) {
@@ -205,8 +163,8 @@ int main()
     }
 
     // 모델 로드
-    std::vector<glm::vec3> vertices;
-    LoadModel("../res/Sphere.obj", vertices);
+    pmp::SurfaceMesh mesh;
+    pmp::read(mesh, "../res/Sphere.obj");
 
     // ----- VBO 생성 코드 -----
     // Vertex의 위치, 색상, 텍스처 좌표 등 대량의 데이터를 담는 GPU 버퍼 생성
