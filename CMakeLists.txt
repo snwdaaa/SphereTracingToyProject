@@ -38,6 +38,21 @@ set(CMAKE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 set(sources ${SOURCE_DIR}/main.cpp)
 
+#===========================================================================================
+# PMP-LIBRARY CONFIGURATION
+#
+# Disable unnecessary builds from pmp-library
+
+option(PMP_BUILD_EXAMPLES "Build the PMP examples" OFF)
+option(PMP_BUILD_TESTS "Build the PMP test programs" OFF)
+option(PMP_BUILD_DOCS "Build the PMP documentation" OFF)
+option(PMP_BUILD_VIS "Build the PMP visualization tools" OFF)
+option(PMP_INSTALL "Install the PMP library and headers" OFF)
+
+add_subdirectory(lib/pmp-library)
+
+#===========================================================================================
+
 add_executable(opengl-template ${sources} ${includes})
 
 # Perform dependency linkage
@@ -60,6 +75,8 @@ if (${ENABLE_ASSIMP})
     include(${CMAKE_DIR}/LinkASSIMP.cmake)
     LinkASSIMP(opengl-template PRIVATE)
 endif()
+
+target_link_libraries(opengl-template PRIVATE pmp)
 
 # Enable C++17
 set_target_properties(opengl-template PROPERTIES
