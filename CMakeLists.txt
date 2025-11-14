@@ -8,7 +8,7 @@ project(OpenGLTemplate CXX)
 # desired options on. Open an issue for additional default support.
 # See: https://github.com/Hoshiningen/OpenGL-Template/issues
 
-set(ENABLE_ASSIMP   ON CACHE BOOL "Add Open Asset Import Library (assimp) to the project" FORCE)
+set(ENABLE_ASSIMP   OFF CACHE BOOL "Add Open Asset Import Library (assimp) to the project" FORCE)
 
 #===========================================================================================
 # GLAD CONFIGURATION
@@ -61,6 +61,9 @@ LinkGLFW(opengl-template PRIVATE)
 
 include(${CMAKE_DIR}/LinkGLAD.cmake)
 LinkGLAD(opengl-template PRIVATE)
+
+include(${CMAKE_DIR}/LinkGLM.cmake)
+LinkGLM(opengl-template PRIVATE)
 
 find_package(OpenGL REQUIRED)
 if (OpenGL_FOUND)
