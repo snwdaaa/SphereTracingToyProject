@@ -16,13 +16,13 @@ float SphereSDF(vec3 p, float r) {
 }
 
 // SDF 정의된 씬의 Surface Normal 구하기
-vec3 EstimateNormal(vec3 p) {
+vec3 EstimateNormal(vec3 p, float r) {
 	float EPSILON = 0.001;
 
 	return normalize(vec3(
-		SphereSDF(vec3(p.x + EPSILON, p.y, p.z), 1.0) - SphereSDF(vec3(p.x - EPSILON, p.y, p.z), 1.0),
-		SphereSDF(vec3(p.x, p.y + EPSILON, p.z), 1.0) - SphereSDF(vec3(p.x, p.y - EPSILON, p.z), 1.0),
-		SphereSDF(vec3(p.x, p.y, p.z + EPSILON), 1.0) - SphereSDF(vec3(p.x, p.y, p.z - EPSILON), 1.0)
+		SphereSDF(vec3(p.x + EPSILON, p.y, p.z), r) - SphereSDF(vec3(p.x - EPSILON, p.y, p.z), r),
+		SphereSDF(vec3(p.x, p.y + EPSILON, p.z), r) - SphereSDF(vec3(p.x, p.y - EPSILON, p.z), r),
+		SphereSDF(vec3(p.x, p.y, p.z + EPSILON), r) - SphereSDF(vec3(p.x, p.y, p.z - EPSILON), r)
 	));
 }
 
@@ -78,13 +78,14 @@ void main() {
 	// Ray Marching 알고리즘 구현
 	float MAX_MARCHING_STEPS = 100;
 	float MAX_MARCHING_DEPTH = 100;
+	float radius = 1.5;
 	for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
-		float dist = SphereSDF(rayPos, 1.5);
+		float dist = SphereSDF(rayPos, radius);
 
 		// 표면에 충분히 가까워졌다면 충돌로 판단
 		if (dist < EPSILON) {
 			// Phong Reflection Model 적용
-			vec3 normal = EstimateNormal(rayPos);
+			vec3 normal = EstimateNormal(rayPos, radius);
 			vec3 phongResult = CalcPhongModel(rayPos, rayOrigin, normal, lightPos, lightColor, objectColor);
 
 			FragColor = vec4(phongResult, 1.0);
@@ -95,7 +96,7 @@ void main() {
 		rayPos += rayDir * dist;
 
 		// 너무 많이 갔으면 종료
-		if (length(rayPos) > MAX_MARCHING_DEPTH) {
+		if (length(rayPos - rayOrigin) > MAX_MARCHING_DEPTH) {
 			break;
 		}
 	}

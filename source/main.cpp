@@ -150,6 +150,9 @@ int main()
     pmp::SurfaceMesh mesh;
     pmp::read(mesh, "../res/Sphere.obj");
 
+    MeshVertexResolver mvResolver(mesh);
+    auto vertices = mvResolver.GetVertices();
+
     // ----- VBO 생성 코드 -----
     // Vertex의 위치, 색상, 텍스처 좌표 등 대량의 데이터를 담는 GPU 버퍼 생성
 
@@ -220,7 +223,7 @@ int main()
         // Model 행렬: 단위 행렬 사용
         glm::mat4 model = glm::mat4(1.0f);
         // View 행렬: 카메라 (0,0,3)에서 원점 바라봄
-        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
+        glm::mat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
             glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // Projection 행렬: 45도 FOV로 원근 투영
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
