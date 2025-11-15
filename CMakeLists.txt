@@ -36,7 +36,10 @@ set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-set(sources ${SOURCE_DIR}/main.cpp)
+set(sources 
+    ${SOURCE_DIR}/main.cpp
+    ${SOURCE_DIR}/MeshVertexResolver.cpp
+)
 
 #===========================================================================================
 # PMP-LIBRARY CONFIGURATION
