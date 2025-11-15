@@ -10,7 +10,7 @@ public:
 		: mesh(mesh)
 	{}
 
-	std::vector<glm::vec3> GetVerticesList();
+	std::vector<glm::vec3> GetVertices();
 private:
 	pmp::SurfaceMesh mesh;
 };
